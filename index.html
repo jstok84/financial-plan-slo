@@ -53,6 +53,17 @@
             font-size: 0.9em;
             margin-top: 5px;
         }
+
+        #debug {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -123,7 +134,18 @@
         <button type="button" id="generatePdf">Generiraj PDF</button>
     </form>
 
+    <div id="debug"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
+        // Debug funkcija
+        function debug(message) {
+            const debugDiv = document.getElementById('debug');
+            debugDiv.style.display = 'block';
+            debugDiv.textContent = message;
+            console.log(message);
+        }
+
         // Validacija obrazca
         function validateForm() {
             let isValid = true;
@@ -186,6 +208,7 @@
         // Prikaz napake
         function showError(id, message) {
             document.getElementById(`${id}Error`).textContent = message;
+            debug(`Error in ${id}: ${message}`);
         }
 
         // Skrij napako
@@ -195,53 +218,68 @@
 
         // Izračun mesečne obremenitve
         function calculateMonthlyBurden() {
-            const formData = new FormData(document.getElementById('financialForm'));
-            const data = Object.fromEntries(formData.entries());
+            try {
+                const formData = new FormData(document.getElementById('financialForm'));
+                const data = Object.fromEntries(formData.entries());
 
-            // Izračun mesečne obremenitve
-            const monthlyExpenses = parseInt(data.food) + 
-                                 parseInt(data.utilities) + 
-                                 parseInt(data.transport) + 
-                                 parseInt(data.insurance) + 
-                                 parseInt(data.other_expenses);
+                // Izračun mesečne obremenitve
+                const monthlyExpenses = parseInt(data.food) + 
+                                     parseInt(data.utilities) + 
+                                     parseInt(data.transport) + 
+                                     parseInt(data.insurance) + 
+                                     parseInt(data.other_expenses);
 
-            // Izračun mesečne obrestne mere
-            const monthlyInterestRate = parseFloat(data.interest_rate) / 100 / 12;
-            
-            // Izračun števila plačil
-            const numberOfPayments = parseInt(data.loan_term) * 12;
-            
-            // Izračun mesečne rate
-            const monthlyPayment = (parseFloat(data.loan_amount) * monthlyInterestRate * 
-                                 Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
-                                (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+                // Izračun mesečne obrestne mere
+                const monthlyInterestRate = parseFloat(data.interest_rate) / 100 / 12;
+                
+                // Izračun števila plačil
+                const numberOfPayments = parseInt(data.loan_term) * 12;
+                
+                // Izračun mesečne rate
+                const monthlyPayment = (parseFloat(data.loan_amount) * monthlyInterestRate * 
+                                     Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
+                                    (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
 
-            return {
-                monthlyExpenses,
-                monthlyPayment
-            };
+                debug(`Calculations successful:
+                    Monthly expenses: ${monthlyExpenses}
+                    Monthly payment: ${monthlyPayment}`);
+
+                return {
+                    monthlyExpenses,
+                    monthlyPayment
+                };
+            } catch (error) {
+                debug(`Error in calculation: ${error.message}`);
+                throw error;
+            }
         }
 
         // Generiranje PDF poročila
         function generatePdf() {
-            const calculations = calculateMonthlyBurden();
-            
-            const doc = new jsPDF();
-            doc.setFontSize(15);
-            doc.text('Finančni Načrt', 105, 30, null, null, 'center');
-            
-            doc.setFontSize(12);
-            doc.text(`Mesečni stroški: €${calculations.monthlyExpenses.toFixed(2)}`, 20, 50);
-            doc.text(`Mesečna rata: €${calculations.monthlyPayment.toFixed(2)}`, 20, 60);
-            
-            const formData = new FormData(document.getElementById('financialForm'));
-            const data = Object.fromEntries(formData.entries());
-            
-            doc.text(`Želeno posojilo: €${data.loan_amount}`, 20, 70);
-            doc.text(`Obdobje: ${data.loan_term} let`, 20, 80);
-            doc.text(`Obrestna mera: ${data.interest_rate}%`, 20, 90);
-            
-            doc.save('financni_nacrt.pdf');
+            try {
+                const calculations = calculateMonthlyBurden();
+                
+                const doc = new jsPDF();
+                doc.setFontSize(15);
+                doc.text('Finančni Načrt', 105, 30, null, null, 'center');
+                
+                doc.setFontSize(12);
+                doc.text(`Mesečni stroški: €${calculations.monthlyExpenses.toFixed(2)}`, 20, 50);
+                doc.text(`Mesečna rata: €${calculations.monthlyPayment.toFixed(2)}`, 20, 60);
+                
+                const formData = new FormData(document.getElementById('financialForm'));
+                const data = Object.fromEntries(formData.entries());
+                
+                doc.text(`Želeno posojilo: €${data.loan_amount}`, 20, 70);
+                doc.text(`Obdobje: ${data.loan_term} let`, 20, 80);
+                doc.text(`Obrestna mera: ${data.interest_rate}%`, 20, 90);
+                
+                debug('PDF generated successfully');
+                doc.save('financni_nacrt.pdf');
+            } catch (error) {
+                debug(`Error generating PDF: ${error.message}`);
+                alert('Napaka pri generiranju PDF poročila. Preverite vnosne podatke.');
+            }
         }
 
         // Dodajanje poslušalcev dogodkov
@@ -249,9 +287,15 @@
             e.preventDefault();
             
             if (validateForm()) {
-                const calculations = calculateMonthlyBurden();
-                alert(`Mesečni stroški: €${calculations.monthlyExpenses.toFixed(2)}\n` +
-                      `Mesečna rata: €${calculations.monthlyPayment.toFixed(2)}`);
+                try {
+                    const calculations = calculateMonthlyBurden();
+                    debug('Calculation successful');
+                    alert(`Mesečni stroški: €${calculations.monthlyExpenses.toFixed(2)}\n` +
+                          `Mesečna rata: €${calculations.monthlyPayment.toFixed(2)}`);
+                } catch (error) {
+                    debug(`Calculation error: ${error.message}`);
+                    alert('Napaka pri izračunu. Preverite vnosne podatke.');
+                }
             }
         });
 
