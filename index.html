@@ -136,7 +136,6 @@
 
     <div id="debug"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         // Debug funkcija
         function debug(message) {
@@ -144,6 +143,19 @@
             debugDiv.style.display = 'block';
             debugDiv.textContent = message;
             console.log(message);
+        }
+
+        // Preveri, ali je jsPDF pravilno naložen
+        if (typeof jsPDF === 'undefined') {
+            debug('jsPDF ni naložen! Poskušam ponovno nalaganje...');
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = function() {
+                debug('jsPDF uspešno naložen!');
+            };
+            document.head.appendChild(script);
+        } else {
+            debug('jsPDF je že naložen!');
         }
 
         // Validacija obrazca
@@ -223,11 +235,11 @@
                 const data = Object.fromEntries(formData.entries());
 
                 // Izračun mesečne obremenitve
-                const monthlyExpenses = parseInt(data.food) + 
-                                     parseInt(data.utilities) + 
-                                     parseInt(data.transport) + 
-                                     parseInt(data.insurance) + 
-                                     parseInt(data.other_expenses);
+                const monthlyExpenses = parseFloat(data.food) || 0 + 
+                                     parseFloat(data.utilities) || 0 + 
+                                     parseFloat(data.transport) || 0 + 
+                                     parseFloat(data.insurance) || 0 + 
+                                     parseFloat(data.other_expenses) || 0;
 
                 // Izračun mesečne obrestne mere
                 const monthlyInterestRate = parseFloat(data.interest_rate) / 100 / 12;
@@ -236,13 +248,14 @@
                 const numberOfPayments = parseInt(data.loan_term) * 12;
                 
                 // Izračun mesečne rate
-                const monthlyPayment = (parseFloat(data.loan_amount) * monthlyInterestRate * 
-                                     Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
+                const monthlyPayment = (parseFloat(data.loan_amount) || 0) * monthlyInterestRate * 
+                                     Math.pow(1 + monthlyInterestRate, numberOfPayments) / 
                                     (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
 
-                debug(`Calculations successful:
+                debug(`Calculations:
                     Monthly expenses: ${monthlyExpenses}
-                    Monthly payment: ${monthlyPayment}`);
+                    Monthly payment: ${monthlyPayment}
+                    Is NaN? ${isNaN(monthlyPayment)}`);
 
                 return {
                     monthlyExpenses,
